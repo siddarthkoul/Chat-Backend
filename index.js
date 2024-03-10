@@ -4,6 +4,7 @@ const { default: mongoose } = require('mongoose');
 const userRoutes = require("./Routes/userRoutes")
 const app = express();
 dotenv.config();
+app.use(express.json());
 
 const connectDB = async () => {
     try { 
