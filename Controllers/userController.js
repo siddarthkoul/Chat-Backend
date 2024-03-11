@@ -1,33 +1,38 @@
 const express = require('express');
-const UserModel  = require("../Models/userModel");
+const UserModel = require("../Models/userModel");
 const asyncHandler = require('express-async-handler');
 const generateToken = require('../config/generateToken');
 
-const loginController = asyncHandler (async(res,req) => {
-    const { name,  password } = req.body;
-    const User = await UserModel.findOne({name});
-    if(User&&(await User.matchPassword(password)))
-    {
+const app = express();
+app.use(express.json()); // Add this line to parse JSON bodies
+app.use(express.urlencoded({ extended: true })); // Add this line to parse URL-encoded bodies
+
+const loginController = asyncHandler(async (req, res) => {
+    const { name, password } = req.body;
+    const user = await UserModel.findOne({ name });
+    console.log("fetched user data", user);
+    console.log(await user.matchPassword(password));
+    if (user && (await user.matchPassword(password))) {
         res.json({
-            _id : user._id,
-            name : user.name,
-            email : user.email,
-            isAdmin : user.isAdmin,
-            token : generateToken(User._id)
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            isAdmin: user.isAdmin,
+            token: generateToken(user._id)
         });
+    } else {
+        throw new Error("Invalid password or Username ")
     }
-    else{
-         throw new Error("Invalid password or Username ")
-    }
-}) ;
-const signupController = asyncHandler (async (req, res) => {
+});
+
+const signupController = asyncHandler(async (req, res) => {
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
         return res.status(400).send("All necessary input fields are required");
     }
 
-    // Check if email already ex ists
+    // Check if email already exists
     const userExist = await UserModel.findOne({ email });
     if (userExist) {
         return res.status(400).send("User already exists");
@@ -40,20 +45,18 @@ const signupController = asyncHandler (async (req, res) => {
     }
 
     //creating a new user
-    const user = await UserModel.create({name, email, password});
-    if(user){
+    const user = await UserModel.create({ name, email, password });
+    if (user) {
         res.status(201).json({
-            _id : user._id,
-            name : user.name,
-            email : user.email,
-            isAdmin : user.isAdmin,
-            token : generateToken  (user._id)
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            isAdmin: user.isAdmin,
+            token: generateToken(user._id)
         })
-        }
-        else{
-            res.status(400).send("resgistration error")
-        }
-      });
+    } else {
+        res.status(400).send("registration error")
+    }
+});
 
-module.exports = {loginController, signupController}
-  
+module.exports = { loginController, signupController };
