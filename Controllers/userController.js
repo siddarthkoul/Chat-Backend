@@ -1,62 +1,89 @@
-const express = require('express');
+const generateToken = require("../Config/generateToken");
 const UserModel = require("../Models/userModel");
-const asyncHandler = require('express-async-handler');
-const generateToken = require('../config/generateToken');
+const expressAsyncHandler = require("express-async-handler");
+// Login
+const loginController = expressAsyncHandler(async (req, res) => {
+  console.log(req.body);
+  const { name, password } = req.body;
 
-const app = express();
-app.use(express.json()); // Add this line to parse JSON bodies
-app.use(express.urlencoded({ extended: true })); // Add this line to parse URL-encoded bodies
+  const user = await UserModel.findOne({ name });
 
-const loginController = asyncHandler(async (req, res) => {
-    const { name, password } = req.body;
-    const user = await UserModel.findOne({ name });
-    console.log("fetched user data", user);
-    console.log(await user.matchPassword(password));
-    if (user && (await user.matchPassword(password))) {
-        res.json({
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            isAdmin: user.isAdmin,
-            token: generateToken(user._id)
-        });
-    } else {
-        throw new Error("Invalid password or Username ")
-    }
+  console.log("fetched user Data", user);
+  console.log(await user.matchPassword(password));
+  if (user && (await user.matchPassword(password))) {
+    const response = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      isAdmin: user.isAdmin,
+      token: generateToken(user._id),
+    };
+    console.log(response);
+    res.json(response);
+  } else {
+    res.status(401);
+    throw new Error("Invalid UserName or Password");
+  }
 });
 
-const signupController = asyncHandler(async (req, res) => {
-    const { name, email, password } = req.body;
+// Registration
+const registerController = expressAsyncHandler(async (req, res) => {
+  const { name, email, password } = req.body;
 
-    if (!name || !email || !password) {
-        return res.status(400).send("All necessary input fields are required");
-    }
+  // check for all fields
+  if (!name || !email || !password) {
+    res.send(400);
+    throw Error("All necessary input fields have not been filled");
+  }
 
-    // Check if email already exists
-    const userExist = await UserModel.findOne({ email });
-    if (userExist) {
-        return res.status(400).send("User already exists");
-    }
+  // pre-existing user
+  const userExist = await UserModel.findOne({ email });
+  if (userExist) {
+    // res.send(405);
+    throw new Error("User already Exists");
+  }
 
-    // Check if username already exists
-    const usernameExist = await UserModel.findOne({ name });
-    if (usernameExist) {
-        return res.status(400).send("Username already taken");
-    }
+  // userName already Taken
+  const userNameExist = await UserModel.findOne({ name });
+  if (userNameExist) {
+    // res.send(406);
+    throw new Error("UserName already taken");
+  }
 
-    //creating a new user
-    const user = await UserModel.create({ name, email, password });
-    if (user) {
-        res.status(201).json({
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            isAdmin: user.isAdmin,
-            token: generateToken(user._id)
-        })
-    } else {
-        res.status(400).send("registration error")
-    }
+  // create an entry in the db
+  const user = await UserModel.create({ name, email, password });
+  if (user) {
+    res.status(201).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      isAdmin: user.isAdmin,
+      token: generateToken(user._id),
+    });
+  } else {
+    res.status(400);
+    throw new Error("Registration Error");
+  }
 });
 
-module.exports = { loginController, signupController };
+const fetchAllUsersController = expressAsyncHandler(async (req, res) => {
+  const keyword = req.query.search
+    ? {
+        $or: [
+          { name: { $regex: req.query.search, $options: "i" } },
+          { email: { $regex: req.query.search, $options: "i" } },
+        ],
+      }
+    : {};
+
+  const users = await UserModel.find(keyword).find({
+    _id: { $ne: req.user._id },
+  });
+  res.send(users);
+});
+
+module.exports = {
+  loginController,
+  registerController,
+  fetchAllUsersController,
+};

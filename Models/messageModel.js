@@ -6,7 +6,11 @@ const messageModel = mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
-    receiver: {
+    content: {
+      type: String,
+      trim: true,
+    },
+    reciever: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
@@ -16,9 +20,9 @@ const messageModel = mongoose.Schema(
     },
   },
   {
-    timestamps: true,
+    timeStamp: true,
   }
 );
 
-const Message = mongoose.model("Message",messageModel);
+const Message = mongoose.model("Message", messageModel);
 module.exports = Message;
